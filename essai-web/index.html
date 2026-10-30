@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Essai Cook Expert</title>
+    <style>
+      :root {
+        --fond: #f6f4ef;
+        --texte: #1f1d1a;
+        --accent: #c8102e;
+        --discret: #6b665d;
+        --carte: #ffffff;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fond: #1a1917;
+          --texte: #eeeae2;
+          --discret: #a39e94;
+          --carte: #262421;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--fond);
+        color: var(--texte);
+        font: 16px/1.4 system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 1.3rem;
+        margin: 0 0 12px;
+      }
+      section {
+        background: var(--carte);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      button {
+        font: inherit;
+        padding: 12px 14px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        width: 100%;
+        margin-top: 8px;
+      }
+      button:disabled {
+        opacity: 0.4;
+      }
+      .rangee {
+        display: flex;
+        gap: 8px;
+      }
+      label {
+        display: block;
+        flex: 1;
+        color: var(--discret);
+        font-size: 0.85rem;
+      }
+      input {
+        font: inherit;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--discret);
+        background: var(--fond);
+        color: var(--texte);
+      }
+      #etat {
+        font-weight: 600;
+      }
+      #journal {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font: 12px/1.5 ui-monospace, monospace;
+        color: var(--discret);
+        max-height: 40vh;
+        overflow-y: auto;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Essai Cook Expert</h1>
+    <section>
+      <div>Robot : <span id="etat">non connecté</span></div>
+      <button id="connecter">Se connecter au robot</button>
+      <div class="rangee">
+        <button id="gauche" disabled>◀ Flèche</button>
+        <button id="lire" disabled>Lire l'état</button>
+        <button id="droite" disabled>Flèche ▶</button>
+      </div>
+    </section>
+    <section>
+      <div class="rangee">
+        <label>Temps<input id="temps" value="2:00" inputmode="numeric" /></label>
+        <label>Temp. (°C)<input id="temperature" value="40" inputmode="numeric" /></label>
+        <label>Vitesse<input id="vitesse" value="3" inputmode="numeric" /></label>
+      </div>
+      <button id="envoyer" disabled>Envoyer le programme (sans démarrer)</button>
+    </section>
+    <section>
+      <ul id="journal"></ul>
+    </section>
+    <script type="module" src="/essai.js"></script>
+  </body>
+</html>

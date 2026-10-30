@@ -1,0 +1,29 @@
+node_modules/
+
+# Système et éditeurs
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Journaux et secrets
+*.log
+.env
+.env.*
+
+# Rétro-ingénierie : code Magimix ou données personnelles, jamais dans le dépôt (voir DECISIONS.md)
+*.apk
+*.apks
+*.xapk
+*.dex
+*.hbc
+*.bundle
+*.smali
+jadx*/
+apktool*/
+bugreport*
+dumpstate*
+*logcat*
+*.btsnoop
+btsnoop_hci*
+*.cfa

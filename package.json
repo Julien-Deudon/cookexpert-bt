@@ -1,0 +1,45 @@
+{
+  "name": "cookexpert-bt",
+  "version": "0.1.0",
+  "description": "Pilotage du Magimix Cook Expert Connect en Bluetooth, sans l'appli Magimix",
+  "license": "MIT",
+  "author": "Julien Deudon",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Julien-Deudon/cookexpert-bt.git"
+  },
+  "keywords": [
+    "magimix",
+    "cook-expert",
+    "food-processor",
+    "bluetooth",
+    "spp",
+    "rfcomm",
+    "web-serial",
+    "serialport",
+    "protocol",
+    "interoperability"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/protocole.ts",
+    "./protocole": "./src/protocole.ts",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test src/*.test.ts",
+    "verifier": "tsc",
+    "robot": "node src/cli.ts",
+    "essai-web": "node src/serveur-essai.ts"
+  },
+  "dependencies": {
+    "serialport": "13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}
