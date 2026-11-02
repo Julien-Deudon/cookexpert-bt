@@ -71,7 +71,8 @@
         background: var(--fond);
         color: var(--texte);
       }
-      #etat {
+      #etat,
+      #poids {
         font-weight: 600;
       }
       #journal {
@@ -104,6 +105,14 @@
         <label>Vitesse<input id="vitesse" value="3" inputmode="numeric" /></label>
       </div>
       <button id="envoyer" disabled>Envoyer le programme (sans démarrer)</button>
+    </section>
+    <section>
+      <div>Balance : <span id="poids">non connectée</span></div>
+      <button id="balance">Se connecter à la balance</button>
+      <div class="rangee">
+        <button id="tare" disabled>TARE</button>
+        <button id="unite" disabled>UNIT</button>
+      </div>
     </section>
     <section>
       <ul id="journal"></ul>

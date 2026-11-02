@@ -1,6 +1,6 @@
 # cookexpert-bt
 
-Piloter un **Magimix Cook Expert Connect** en Bluetooth, sans l'appli officielle.
+Piloter un **Magimix Cook Expert Connect** et sa **balance XL Connect** en Bluetooth, sans l'appli officielle.
 
 [English version below](#english)
 
@@ -9,9 +9,11 @@ Piloter un **Magimix Cook Expert Connect** en Bluetooth, sans l'appli officielle
 Le Cook Expert Connect se pilote par sa « clé Connect », branchée sous la base. Cette clé parle en **Bluetooth classique, profil série SPP** (pas en BLE). Ce projet fournit :
 
 - une **bibliothèque** TypeScript sans dépendance (`src/protocole.ts`) : fabrication des trames, CRC8, découpage du flux reçu, décodage de l'état du robot, programme Expert ;
+- la **balance XL Connect** (`src/balance.ts`) : lecture du poids, tare, unité. Elle parle en BLE : Web Bluetooth suffit, sans appairage ;
+- la **conversion des recettes Thermomix** (`src/conversion.ts`) : « Cuire 25 min/120°C/vitesse 2. » devient un programme Expert, avec la table de vitesses publiée par Cookomix ;
 - un **outil en ligne de commande** (`src/cli.ts`) : lire l'état, appuyer sur une touche, régler un programme Expert ;
-- une **page d'essai Web Serial** (`essai-web/`) : la même chose depuis Chrome, sur téléphone Android ou sur ordinateur ;
-- la **description du protocole**, en français : [PROTOCOLE.md](PROTOCOLE.md).
+- une **page d'essai** (`essai-web/`) : la même chose depuis Chrome, sur téléphone Android ou sur ordinateur, plus la balance ;
+- la **description des protocoles**, en français : [PROTOCOLE.md](PROTOCOLE.md) pour le robot, [BALANCE.md](BALANCE.md) pour la balance.
 
 Un programme Expert (temps, température, vitesse) s'envoie en une seule trame. Le robot passe alors en « prêt » avec ces réglages, **sans démarrer**.
 
@@ -69,12 +71,13 @@ Options utiles :
 - `--journal` : affiche les octets bruts échangés ;
 - `--temperature sans` : pas de chauffe.
 
-## Page d'essai Web Serial
+## Page d'essai
 
 1. Lancer le serveur : `npm run essai-web`, puis ouvrir `http://localhost:8080` dans Chrome.
 2. Sur un téléphone Android branché en USB (débogage USB activé), rendre la page accessible : `adb reverse tcp:8080 tcp:8080`, puis ouvrir `http://localhost:8080` dans Chrome sur le téléphone.
 3. Toucher « Se connecter au robot ». Chrome demande l'autorisation « Appareils à proximité », puis propose « cook expert XXXXXX ».
 4. Lire l'état, utiliser les flèches, ou envoyer un programme (temps, température, vitesse).
+5. Pour la balance : l'allumer, toucher « Se connecter à la balance », puis peser, TARE et UNIT.
 
 Pour se passer de l'ordinateur, la page peut être servie en HTTPS par n'importe quel hébergeur, avec `src/protocole.ts` converti en JavaScript.
 
@@ -95,7 +98,39 @@ for (const t of trames) {
 }
 ```
 
-Le paquet exporte directement le source TypeScript. Les outils qui compilent le TypeScript (Vite, esbuild…) l'acceptent tel quel. Node seul, en revanche, refuse d'effacer les types d'un fichier situé dans `node_modules` : dans ce cas, copiez `src/protocole.ts` dans votre projet. C'est un seul fichier, sans dépendance.
+### Recettes écrites pour Thermomix
+
+```ts
+import { convertirEtape } from 'cookexpert-bt/conversion';
+
+const c = convertirEtape('Cuire 25 min/120°C/vitesse 2.');
+if (c?.statut === 'ok') {
+  await ecrivain.write(trame(Commande.envoyerEtat, donneesExpert(c.reglage))); // Expert 25:00, 120 °C, vitesse 3
+  console.log(c.reglage.remarques); // consignes à afficher : Varoma, vitesse à augmenter à la main…
+}
+```
+
+Les vitesses suivent la table publiée par Cookomix (Thermomix 1 et 2 → 3, 4 → 12, 10 → 18), et la vitesse est plafonnée à 15 au-dessus de 60 °C. Le pétrin renvoie au programme Boulangerie du robot. Vérifiez toujours le réglage affiché par le robot avant d'appuyer sur AUTO.
+
+### Balance
+
+```ts
+import { CARACTERISTIQUE_COMMANDES, CARACTERISTIQUE_MESURES, commandeTare, lirePesee, SERVICE_BALANCE } from 'cookexpert-bt/balance';
+
+const appareil = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_BALANCE] }] });
+const service = await (await appareil.gatt.connect()).getPrimaryService(SERVICE_BALANCE);
+const mesures = await service.getCharacteristic(CARACTERISTIQUE_MESURES);
+const commandes = await service.getCharacteristic(CARACTERISTIQUE_COMMANDES);
+mesures.addEventListener('characteristicvaluechanged', () => {
+  const vue = mesures.value;
+  const pesee = lirePesee(new Uint8Array(vue.buffer, vue.byteOffset, vue.byteLength));
+  if (pesee) console.log(pesee.valeur, pesee.stable); // 125 true
+});
+await mesures.startNotifications();
+await commandes.writeValueWithoutResponse(commandeTare(5)); // tare
+```
+
+Le paquet exporte directement le source TypeScript. Les outils qui compilent le TypeScript (Vite, esbuild…) l'acceptent tel quel. Node seul, en revanche, refuse d'effacer les types d'un fichier situé dans `node_modules` : dans ce cas, copiez les fichiers voulus de `src/` dans votre projet. Ils n'ont aucune dépendance (`conversion.ts` a besoin de `protocole.ts`).
 
 ## Sécurité
 
@@ -107,7 +142,9 @@ Le paquet exporte directement le source TypeScript. Les outils qui compilent le 
 ## Limites
 
 - Seul le mode Expert est réglé par l'outil.
-- 29 °C est la température minimale ; elle signifie probablement « sans chauffe » (à confirmer).
+- 29 °C est la température minimale ; elle signifie probablement « sans chauffe » (à confirmer). L'écran du robot, lui, affiche 0 °C pour « sans chauffe ».
+- La balance n'a été essayée qu'avec un modèle (trames de type 5).
+- La conversion Thermomix est une équivalence, pas une recette testée sur Cook Expert.
 - Les codes de refus d'un programme (autres que `00`, accepté) restent inconnus.
 
 ## Développement
@@ -122,7 +159,7 @@ Les tests rejouent des trames réelles du robot. Toute nouvelle trame observée 
 ## Avertissement
 
 - Projet personnel et indépendant, **sans aucun lien avec Magimix**, ni approuvé ni soutenu par Magimix.
-- « Magimix », « Cook Expert » et les autres marques citées appartiennent à leurs propriétaires. Elles ne servent ici qu'à décrire l'appareil compatible.
+- « Magimix », « Cook Expert », « Thermomix » et les autres marques citées appartiennent à leurs propriétaires. Elles ne servent ici qu'à décrire l'appareil compatible.
 - Le protocole a été décrit à partir de l'analyse de l'appli Android officielle, à des fins d'interopérabilité. Ce dépôt ne contient aucun code, fichier ou extrait de cette appli.
 - Logiciel fourni **tel quel, sans aucune garantie** (voir [LICENSE](LICENSE)). Le robot coupe et chauffe : vous l'utilisez avec cet outil **à vos risques**, y compris pour votre appareil.
 
@@ -136,16 +173,18 @@ Les tests rejouent des trames réelles du robot. Toute nouvelle trame observée 
 
 # cookexpert-bt (English)
 
-Control a **Magimix Cook Expert Connect** over Bluetooth, without the official app.
+Control a **Magimix Cook Expert Connect** and its **XL Connect scale** over Bluetooth, without the official app.
 
 ## What it does
 
 The Cook Expert Connect is controlled through its "Connect key", plugged under the base. The key speaks **Bluetooth Classic, Serial Port Profile (SPP)**, not BLE. This project provides:
 
 - a dependency-free TypeScript **library** (`src/protocole.ts`): frame building, CRC8, splitting the incoming stream, decoding the machine state, Expert programs;
+- the **XL Connect scale** (`src/balance.ts`): weight readings, tare, unit. It speaks BLE: Web Bluetooth is enough, with no pairing;
+- **Thermomix recipe conversion** (`src/conversion.ts`): "Cuire 25 min/120°C/vitesse 2." becomes an Expert program, using the speed table published by Cookomix (French recipe notation);
 - a **command-line tool** (`src/cli.ts`): read the state, press a key, set an Expert program;
-- a **Web Serial test page** (`essai-web/`): the same from Chrome, on an Android phone or a computer;
-- the **protocol description**, in French: [PROTOCOLE.md](PROTOCOLE.md).
+- a **test page** (`essai-web/`): the same from Chrome, on an Android phone or a computer, plus the scale;
+- the **protocol descriptions**, in French: [PROTOCOLE.md](PROTOCOLE.md) for the machine, [BALANCE.md](BALANCE.md) for the scale.
 
 The code and its user-facing messages are in French.
 
@@ -205,12 +244,13 @@ Useful options:
 - `--journal`: print the raw bytes exchanged;
 - `--temperature sans`: no heating.
 
-## Web Serial test page
+## Test page
 
 1. Start the server: `npm run essai-web`, then open `http://localhost:8080` in Chrome.
 2. On an Android phone connected over USB (USB debugging on), make the page reachable: `adb reverse tcp:8080 tcp:8080`, then open `http://localhost:8080` in Chrome on the phone.
 3. Tap "Se connecter au robot" (connect). Chrome asks for the "Nearby devices" permission, then offers "cook expert XXXXXX".
 4. Read the state, use the arrows, or send a program (time, temperature, speed).
+5. For the scale: switch it on, tap "Se connecter à la balance" (connect), then weigh, TARE and UNIT.
 
 To do without the computer, the page can be served over HTTPS by any host, with `src/protocole.ts` converted to JavaScript.
 
@@ -231,7 +271,28 @@ for (const t of trames) {
 }
 ```
 
-The package exports the TypeScript source directly. Tools that compile TypeScript (Vite, esbuild…) accept it as is. Plain Node, however, refuses to strip types from files inside `node_modules`: in that case, copy `src/protocole.ts` into your project. It is a single file with no dependencies.
+Thermomix-style steps and the scale:
+
+```ts
+import { convertirEtape } from 'cookexpert-bt/conversion';
+import { CARACTERISTIQUE_MESURES, lirePesee, SERVICE_BALANCE } from 'cookexpert-bt/balance';
+
+const c = convertirEtape('Cuire 25 min/120°C/vitesse 2.'); // Expert 25:00, 120 °C, speed 3
+if (c?.statut === 'ok') await writer.write(trame(Commande.envoyerEtat, donneesExpert(c.reglage)));
+
+const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_BALANCE] }] });
+const service = await (await device.gatt.connect()).getPrimaryService(SERVICE_BALANCE);
+const readings = await service.getCharacteristic(CARACTERISTIQUE_MESURES);
+readings.addEventListener('characteristicvaluechanged', () => {
+  const v = readings.value;
+  console.log(lirePesee(new Uint8Array(v.buffer, v.byteOffset, v.byteLength))); // { valeur: 125, unite: 0, stable: true, type: 5 }
+});
+await readings.startNotifications();
+```
+
+Speeds follow the table published by Cookomix (Thermomix 1 and 2 → 3, 4 → 12, 10 → 18), capped at 15 above 60 °C. Always check the setting shown on the machine before pressing AUTO.
+
+The package exports the TypeScript source directly. Tools that compile TypeScript (Vite, esbuild…) accept it as is. Plain Node, however, refuses to strip types from files inside `node_modules`: in that case, copy the files you need from `src/` into your project. They have no dependencies (`conversion.ts` needs `protocole.ts`).
 
 ## Safety
 
@@ -243,7 +304,9 @@ The package exports the TypeScript source directly. Tools that compile TypeScrip
 ## Limitations
 
 - Only Expert mode can be set by the tool.
-- 29 °C is the minimum temperature; it probably means "no heating" (to be confirmed).
+- 29 °C is the minimum temperature; it probably means "no heating" (to be confirmed). The machine's own screen shows 0 °C for "no heating".
+- The scale was tested with a single model (type 5 frames).
+- The Thermomix conversion is an equivalence, not a recipe tested on a Cook Expert.
 - The rejection codes for a program (other than `00`, accepted) are still unknown.
 
 ## Development
@@ -258,7 +321,7 @@ The tests replay real frames from the machine. Any newly observed frame goes the
 ## Disclaimer
 
 - Personal, independent project, **not affiliated with Magimix** in any way, nor endorsed or supported by Magimix.
-- "Magimix", "Cook Expert" and other trademarks mentioned belong to their owners. They are used only to describe the compatible appliance.
+- "Magimix", "Cook Expert", "Thermomix" and other trademarks mentioned belong to their owners. They are used only to describe the compatible appliance.
 - The protocol was described from an analysis of the official Android app, for interoperability purposes. This repository contains no code, file or excerpt from that app.
 - Software provided **as is, without any warranty** (see [LICENSE](LICENSE)). The machine cuts and heats: you use it with this tool **at your own risk**, including for your appliance.
 

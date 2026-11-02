@@ -26,3 +26,13 @@
 **La règle :** le dépôt ne contient que notre code et la description du protocole, rédigée par nous. Aucun fichier ni extrait de l'appli Magimix (APK, sources décompilées, bundle Hermes). Aucune donnée personnelle : nom ou adresse Bluetooth d'un robot réel, modèle de téléphone, journaux Android. Les exemples de nom s'écrivent « cook expert XXXXXX ».
 **Pourquoi :** le nom annoncé par le robot dérive de son adresse Bluetooth, et les journaux Android contiennent bien plus que les trames. Le code de l'appli appartient à Magimix ; seules ses informations d'interface (trames, codes, bornes) sont décrites ici, pour l'interopérabilité.
 **Conséquence :** le `.gitignore` refuse les APK, journaux et rapports de bug. Les trames gardées dans les tests ne contiennent ni identifiant ni adresse.
+
+## La balance se lit en Web Bluetooth
+
+**La règle :** `src/balance.ts` décode les trames de la balance XL Connect et fabrique la tare et le changement d'unité. Le bouton UNIT ne propose que g, kg, lb et oz, et l'affichage est converti par l'appli.
+**Pourquoi :** contrairement au robot, la balance parle en BLE, que Chrome gère sans appairage. L'appli Magimix ne propose que ces quatre unités, la balance ignore les millilitres, et celle essayée le 2026-10-30 continue d'envoyer des grammes après une commande d'unité.
+
+## Les recettes Thermomix passent par la table de Cookomix
+
+**La règle :** `src/conversion.ts` traduit « Cuire 25 min/120°C/vitesse 2. » avec la table de vitesses publiée par Cookomix, demi-vitesses au milieu de leurs voisines, vitesse plafonnée à 15 au-dessus de 60 °C. Le Varoma devient 120 °C. Le pétrin reste au programme Boulangerie, lancé à la main.
+**Pourquoi :** c'est la table d'un site qui publie des milliers de recettes Thermomix, et elle colle aux tours/minute : sous ~250 tr/min, le Cook Expert ne tourne pas en continu, alors que les vitesses Thermomix 1 et 2 font 100 et 200 tr/min. La limite à chaud vient de la notice du robot. L'envoi du programme Boulangerie par Bluetooth n'a pas encore été essayé.

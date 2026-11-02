@@ -1,6 +1,6 @@
 # cookexpert-bt : consignes
 
-Ce projet pilote le Magimix Cook Expert Connect en Bluetooth, sans l'appli Magimix. Il est publié en open source (licence MIT). Le protocole est décrit dans PROTOCOLE.md, les choix dans DECISIONS.md, l'usage dans README.md.
+Ce projet pilote le Magimix Cook Expert Connect en Bluetooth, sans l'appli Magimix. Il est publié en open source (licence MIT). Le protocole du robot est décrit dans PROTOCOLE.md, celui de la balance dans BALANCE.md, les choix dans DECISIONS.md, l’usage dans README.md.
 
 - Tests : `npm test` (rejoue des trames réelles du robot). Vérification des types : `npm run verifier`.
 - Outil : `node src/cli.ts` sans argument affiche l'aide. Avec `--essai`, rien n'est envoyé.

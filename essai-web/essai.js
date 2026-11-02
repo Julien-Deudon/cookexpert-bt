@@ -1,4 +1,18 @@
-// Essai Web Serial : Chrome (Android ou ordinateur) parle au robot appairé, sans appli Magimix.
+// Essai : Chrome (Android ou ordinateur) parle au robot appairé (Web Serial) et à la balance (Web Bluetooth),
+// sans appli Magimix.
+import {
+  CARACTERISTIQUE_COMMANDES,
+  CARACTERISTIQUE_MESURES,
+  commandeTare,
+  commandeUnite,
+  commandeVersion,
+  enGrammes,
+  formaterPoids,
+  lirePesee,
+  nomUnite,
+  SERVICE_BALANCE,
+  uniteSuivante,
+} from './balance.js';
 import {
   Commande,
   decouperTrames,
@@ -141,6 +155,56 @@ function bouton(id, action) {
   });
 }
 
+// Balance : BLE, donc Web Bluetooth, sans appairage. Le poids s'affiche dans l'unité choisie avec UNIT ;
+// la conversion se fait ici, car certaines balances continuent d'envoyer des grammes.
+let commandesBalance;
+let typeBalance = 5;
+let uniteAffichee = 0;
+
+async function ecrireBalance(octets) {
+  journal(`balance → ${enHexa(octets)}`);
+  await commandesBalance.writeValueWithoutResponse(octets);
+}
+
+function activerBalance(actif) {
+  for (const id of ['tare', 'unite']) $(id).disabled = !actif;
+}
+
+async function connecterBalance() {
+  if (!('bluetooth' in navigator)) throw new Error('ce navigateur ne connaît pas Web Bluetooth (il faut Chrome)');
+  const appareil = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_BALANCE] }] });
+  appareil.addEventListener('gattserverdisconnected', () => {
+    $('poids').textContent = 'déconnectée';
+    activerBalance(false);
+  });
+  const service = await (await appareil.gatt.connect()).getPrimaryService(SERVICE_BALANCE);
+  commandesBalance = await service.getCharacteristic(CARACTERISTIQUE_COMMANDES);
+  const mesures = await service.getCharacteristic(CARACTERISTIQUE_MESURES);
+  mesures.addEventListener('characteristicvaluechanged', () => {
+    const vue = mesures.value;
+    const octets = new Uint8Array(vue.buffer, vue.byteOffset, vue.byteLength);
+    const pesee = lirePesee(octets);
+    if (!pesee) {
+      journal(`balance ← ${enHexa(octets)}`);
+      return;
+    }
+    typeBalance = pesee.type;
+    const grammes = enGrammes(pesee);
+    const texte = grammes === null ? `${pesee.valeur} ${nomUnite(pesee.unite)}` : formaterPoids(grammes, uniteAffichee);
+    $('poids').textContent = pesee.stable ? texte : `${texte} …`;
+  });
+  await mesures.startNotifications();
+  await ecrireBalance(commandeVersion(typeBalance));
+  activerBalance(true);
+  journal('balance connectée');
+}
+
+bouton('balance', connecterBalance);
+bouton('tare', () => ecrireBalance(commandeTare(typeBalance)));
+bouton('unite', () => {
+  uniteAffichee = uniteSuivante(uniteAffichee);
+  return ecrireBalance(commandeUnite(typeBalance, uniteAffichee));
+});
 bouton('connecter', connecter);
 bouton('lire', lireEtatRobot);
 bouton('droite', () => appuyer(Commande.droite));

@@ -13,9 +13,9 @@ const fichiers: Record<string, [URL, string]> = {
 createServer(async (requete, reponse) => {
   try {
     const chemin = (requete.url ?? '/').split('?')[0];
-    if (chemin === '/protocole.js') {
-      // Le même protocole que l'outil en ligne de commande, types effacés à la volée.
-      const source = await readFile(new URL('./protocole.ts', import.meta.url), 'utf8');
+    if (chemin === '/protocole.js' || chemin === '/balance.js') {
+      // Les mêmes modules que l'outil en ligne de commande, types effacés à la volée.
+      const source = await readFile(new URL(`.${chemin.replace(/\.js$/, '.ts')}`, import.meta.url), 'utf8');
       reponse.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' }).end(stripTypeScriptTypes(source));
       return;
     }

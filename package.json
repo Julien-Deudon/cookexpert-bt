@@ -1,7 +1,7 @@
 {
   "name": "cookexpert-bt",
-  "version": "0.1.0",
-  "description": "Pilotage du Magimix Cook Expert Connect en Bluetooth, sans l'appli Magimix",
+  "version": "0.2.0",
+  "description": "Pilotage du Magimix Cook Expert Connect et de sa balance en Bluetooth, sans l'appli Magimix",
   "license": "MIT",
   "author": "Julien Deudon",
   "repository": {
@@ -18,12 +18,18 @@
     "web-serial",
     "serialport",
     "protocol",
-    "interoperability"
+    "interoperability",
+    "web-bluetooth",
+    "ble",
+    "kitchen-scale",
+    "thermomix"
   ],
   "type": "module",
   "exports": {
     ".": "./src/protocole.ts",
     "./protocole": "./src/protocole.ts",
+    "./balance": "./src/balance.ts",
+    "./conversion": "./src/conversion.ts",
     "./package.json": "./package.json"
   },
   "engines": {
